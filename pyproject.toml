@@ -1,0 +1,10 @@
+[project]
+name = "rag-dv"
+version = "0.1.0"
+description = "RAG project for Data Visualization Course at AGH"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "haystack>=0.42",
+    "streamlit>=1.45.1",
+]

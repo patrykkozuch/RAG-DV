@@ -1,0 +1,23 @@
+services:
+  llama:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    volumes:
+      - ./models/:/root/.cache/llama.cpp/
+    ports:
+      - "8080:8080"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+    command: >
+      -hf unsloth/phi-4-GGUF:Q4_K_M
+      --port 8080
+      --host 0.0.0.0
+      --flash-attn
+      --n-gpu-layers 99
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
