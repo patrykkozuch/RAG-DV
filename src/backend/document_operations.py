@@ -13,9 +13,9 @@ def list_documents() -> List[Dict[str, Any]]:
     """
     # Placeholder implementation
     return [
-        {"id": "doc1", "title": "Sample Document 1", "type": "pdf", "size": 1024, "uploaded_at": "2025-05-26"},
-        {"id": "doc2", "title": "Sample Document 2", "type": "txt", "size": 512, "uploaded_at": "2025-05-25"},
-        {"id": "doc3", "title": "Sample Document 3", "type": "docx", "size": 2048, "uploaded_at": "2025-05-24"},
+        {"id": "doc1", "title": "Sample Document 1", "type": "pdf", "size": 10024, "uploaded_at": "2025-05-26"},
+        {"id": "doc2", "title": "Sample Document 2", "type": "txt", "size": 4512, "uploaded_at": "2025-05-25"},
+        {"id": "doc3", "title": "Sample Document 3", "type": "docx", "size": 122048, "uploaded_at": "2025-05-24"},
     ]
 
 
