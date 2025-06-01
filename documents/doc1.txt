@@ -1,0 +1,1 @@
+This is the content of Sample Document 1. It contains information about RAG systems.

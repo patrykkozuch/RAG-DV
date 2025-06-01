@@ -7,13 +7,17 @@ import streamlit as st
 from src.backend.document_operations import DocumentManager
 
 
-def render_document_management(document_manager):
+def render_document_management():
+    global _document_manager
+    if '_document_manager' not in globals():
+        _document_manager = DocumentManager()
+        _document_manager.initialize_from_directory()
     """Render the document management component."""
 
     col1, col2 = st.columns([2, 1])
 
     if 'documents' not in st.session_state:
-        st.session_state.documents = document_manager.list_documents()
+        st.session_state.documents = _document_manager.list_documents()
 
     with col1:
         st.markdown("### Upload Document")
@@ -38,7 +42,7 @@ def render_document_management(document_manager):
                         "file_size": uploaded_file.size / 1024
                     }
 
-                    result = document_manager.upload_document(file_content, metadata)
+                    result = _document_manager.upload_document(file_content, metadata)
                     print(result)
 
                     if result:
@@ -80,14 +84,14 @@ def render_document_management(document_manager):
         delete_key = f"delete_{doc['id']}"
 
         if col5_row.button("View", key=view_key):
-            content = document_manager.get_document_content(doc["id"])
+            content = _document_manager.get_document_content(doc["id"])
             if content:
                 st.text_area("Document content", value=content, height=300, disabled=True)
             else:
                 st.error("Could not retrieve document content.")
 
         if col5_row.button("Delete", key=delete_key):
-            if document_manager.delete_document(doc["id"]):
+            if _document_manager.delete_document(doc["id"]):
                 st.success(f"Document {doc['id']} deleted successfully!")
                 st.rerun()
             else:
