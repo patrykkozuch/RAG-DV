@@ -1,6 +1,3 @@
-"""
-This module handles communication with the LLM server running in Docker.
-"""
 import requests
 import json
 import time

@@ -1,6 +1,3 @@
-"""
-This module contains LLM operations for the RAG system.
-"""
 import time
 from typing import List, Dict, Any, Optional
 
