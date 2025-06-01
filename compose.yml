@@ -7,8 +7,9 @@ services:
       - "8080:8080"
     environment:
       NVIDIA_VISIBLE_DEVICES: all
+      # -hf unsloth/phi-4-GGUF:Q4_K_M
     command: >
-      -hf unsloth/phi-4-GGUF:Q4_K_M
+      -hf TheBloke/Mistral-7B-Instruct-v0.1-GGUF:mistral-7b-instruct-v0.1.Q4_K_M.gguf
       --port 8080
       --host 0.0.0.0
       --flash-attn

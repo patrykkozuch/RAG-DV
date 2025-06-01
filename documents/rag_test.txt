@@ -1,0 +1,28 @@
+The Zakarian Protocol: Version 3.7b - Internal Use Only
+
+Compiled by Dr. Elira Montane, Lead Chronoecologist, Virellan Institute of Temporal Studies
+
+Summary:
+The Zakarian Protocol outlines containment and stabilization procedures for Zone-V anomalies discovered near the Triselian Rift in Cycle 4121 of the Jurelic Calendar. These anomalies exhibit chrono-inversion properties capable of reversing causality within a localized field.
+
+Key Terms:
+- Triselian Rift: A temporal fissure located in the Oort Drift of the Helix Sector.
+- Chrono-Inversion: A state in which effect precedes cause, leading to retrocausal feedback loops.
+- Zone-V: The classification given to anomalies exceeding a temporal distortion factor of 7.3 on the Linscombe-Torr scale.
+
+Core Findings:
+1. Temporal displacement was observed to peak at 2.7 microcentons prior to baseline reality calibration.
+2. Subject Alpha-7 retained memory traces of events that had not yet occurred relative to our fixed frame.
+3. Stabilization via Rhombic Field Generators (RFGs) reduced loop amplification by 61.2% in controlled simulations.
+
+Containment Recommendations:
+- Deploy quad-phased RFG arrays at equidistant anchor points surrounding anomaly.
+- Initiate Virellan Temporal Harmonization Sequence (VTHS) at 0.03 pulse intervals.
+- Avoid direct observation during flux events. Observers exhibit neurological echo symptoms after prolonged exposure (>13 pulses).
+
+Notes:
+Dr. Kasret’s hypothesis regarding chronotaxis has yet to be peer-validated. Until further review, refer to Appendices C and G for provisional navigational protocols.
+
+Distribution of this protocol outside the Virellan Institute is strictly prohibited under Article 14-B of the Temporal Safety Accord (TSA).
+
+-- End of File --

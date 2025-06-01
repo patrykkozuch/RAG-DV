@@ -4,22 +4,26 @@ Document management component for the Streamlit RAG chatbot.
 import time
 
 import streamlit as st
-from src.backend.document_operations import list_documents, upload_document, delete_document, get_document_content
+from src.backend.document_operations import DocumentManager
 
 
 def render_document_management():
+    global _document_manager
+    if '_document_manager' not in globals():
+        _document_manager = DocumentManager()
+        _document_manager.initialize_from_directory()
     """Render the document management component."""
 
     col1, col2 = st.columns([2, 1])
 
     if 'documents' not in st.session_state:
-        st.session_state.documents = list_documents()
+        st.session_state.documents = _document_manager.list_documents()
 
     with col1:
         st.markdown("### Upload Document")
 
-        uploaded_file = st.file_uploader("", type=["pdf", "txt", "docx", "md"])
-        
+        uploaded_file = st.file_uploader("", type=["txt"])
+
         if uploaded_file is not None:
             st.write(f"File name: {uploaded_file.name}")
             st.write(f"**Size:** {uploaded_file.size / 1024:.2f} KB")
@@ -28,11 +32,18 @@ def render_document_management():
             if st.button("Process and Upload Document", type="primary"):
                 with st.spinner("Processing and uploading..."):
                     time.sleep(1)
-                    file_content = uploaded_file.getvalue()
+                    file_content = uploaded_file.getvalue().decode("utf-8")
 
-                    file_type = uploaded_file.name.split(".")[-1]
+                    #file_type = uploaded_file.name.split(".")[-1]
 
-                    result = upload_document(file_content, uploaded_file.name, file_type)
+                    metadata = {
+                        "file_name": uploaded_file.name,
+                        "file_type": uploaded_file.type,
+                        "file_size": uploaded_file.size / 1024
+                    }
+
+                    result = _document_manager.upload_document(file_content, metadata)
+                    print(result)
 
                     if result:
                         st.success(f"Document uploaded successfully! ID: {result['id']}")
@@ -62,25 +73,25 @@ def render_document_management():
         with col1_row:
             st.write(doc.get("id", "N/A"))
         with col2_row:
-            st.write(doc.get("title", "N/A"))
+            st.write(doc.get("file_name", "N/A"))
         with col3_row:
-            st.write(doc.get("type", "N/A"))
+            st.write(doc.get("file_type", "N/A"))
         with col4_row:
-            size_kb = doc.get("size", 0) / 1024
+            size_kb = doc.get("file_size", 0)
             st.write(f"{size_kb:.2f}")
 
         view_key = f"view_{doc['id']}"
         delete_key = f"delete_{doc['id']}"
 
         if col5_row.button("View", key=view_key):
-            content = get_document_content(doc["id"])
+            content = _document_manager.get_document_content(doc["id"])
             if content:
                 st.text_area("Document content", value=content, height=300, disabled=True)
             else:
                 st.error("Could not retrieve document content.")
 
         if col5_row.button("Delete", key=delete_key):
-            if delete_document(doc["id"]):
+            if _document_manager.delete_document(doc["id"]):
                 st.success(f"Document {doc['id']} deleted successfully!")
                 st.rerun()
             else:

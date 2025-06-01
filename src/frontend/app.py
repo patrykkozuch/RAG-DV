@@ -2,6 +2,8 @@
 Main Streamlit application for the RAG chatbot.
 """
 import streamlit as st
+
+from src.backend.document_operations import DocumentManager
 from src.frontend.chat_interface import render_chat_interface
 from src.frontend.document_management import render_document_management
 

@@ -1,93 +1,91 @@
-"""
-This module contains placeholder functions for LLM operations in a RAG system.
-"""
+import time
 from typing import List, Dict, Any, Optional
 
-from src.backend.message import Message
+from .message import Message
+from .llm_node import LLMNode
+from .document_operations import DocumentManager
 
 
-def query_llm(query: str, use_rag: bool = True, document_ids: Optional[List[str]] = None) -> Message:
-    """
-    Send a query to the LLM, optionally using RAG with specified documents.
+class RAGSystem:
 
-    Args:
-        query (str): The user's query or prompt.
-        use_rag (bool): Whether to use RAG for this query.
-        document_ids (Optional[List[str]]): Specific document IDs to use for retrieval.
-            If None and use_rag is True, all available documents will be considered.
+    def __init__(
+        self,
+        llm_base_url: str = "http://localhost:8080",
+        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    ):
+        self.llm_node = LLMNode(llm_base_url)
+        self.document_manager = DocumentManager(embedding_model=embedding_model)
+        self.chat_history: List[Message] = []
 
-    Returns:
-        Message: The response from the LLM, including the generated text and metadata.
-    """
-    # Placeholder implementation
-    print(f"Query: {query}")
-    print(f"Using RAG: {use_rag}")
-    if document_ids:
-        print(f"Document IDs: {document_ids}")
 
-    # Simulate different responses based on whether RAG is used
+        self.chat_history.append(
+            Message(
+                role="system",
+                content="You are an assistant with RAG capabilities. When provided with context from documents, use that information to enhance your responses."
+            )
+        )
+
+    def initialize_documents(self, directory_path: str = "documents") -> Dict[str, Any]:
+        return self.document_manager.initialize_from_directory(directory_path)
+
+
+def query_llm(query: str, use_rag: bool = True) -> Message:
+    global _rag_system
+    if '_rag_system' not in globals():
+        _rag_system = RAGSystem()
+
+    start_time = time.time()
+
+    user_message = Message(role="user", content=query)
+    _rag_system.chat_history.append(user_message)
+
+    sources = []
+    enhanced_query = query
+
     if use_rag:
-        response_text = f"This is a RAG-enhanced response to: '{query}'. The response includes information from relevant documents."
-        sources = [{"id": "doc1", "relevance": 0.92}, {"id": "doc3", "relevance": 0.78}]
-    else:
-        response_text = f"This is a standard LLM response to: '{query}'. No document retrieval was used."
-        sources = []
+        relevant_docs = _rag_system.document_manager.search_documents(query, top_k=3)
 
-    return Message(
-        role="assistant",
-        content=response_text,
-        sources=sources,
-        tokens_used=150,
-        processing_time=1.2
-    )
+        if relevant_docs:
+            context_parts = []
+            for i, doc in enumerate(relevant_docs):
+                context_parts.append(f"Document {i+1}: {doc.content}")
+                sources.append({
+                    "id": doc.id,
+                    "file_name": doc.meta["file_name"],
+                    "metadata": doc.meta,
+                    "relevance": 1.0 - (i * 0.1)
+                })
+
+            context = "\n\n".join(context_parts)
+            enhanced_query = f"""Context from relevant documents:
+                            {context}
+                            
+                            Based on the above context, please answer the following question:
+                            {query}"""
+
+    messages = []
+    for msg in _rag_system.chat_history[-5:]:
+        if msg.role != "user" or msg.content != query:
+            messages.append({"role": msg.role, "content": msg.content})
+
+    messages.append({"role": "user", "content": enhanced_query})
+
+    response = _rag_system.llm_node.chat_completion(messages)
+
+
+    response.sources = sources
+    if not response.processing_time:
+        response.processing_time = round(time.time() - start_time, 2)
+
+    _rag_system.chat_history.append(response)
+
+    return response
 
 
 def get_chat_history() -> List[Message]:
-    """
-    Get the chat history.
+    global _rag_system
+    if '_rag_system' not in globals():
+        _rag_system = RAGSystem()
+        _rag_system.initialize_documents()
 
-    Returns:
-        List[Message]: A list of chat messages with metadata.
-    """
-    # Placeholder implementation
-    return [
-        Message(role="system", content="You are a helpful assistant with RAG capabilities."),
-        Message(role="user", content="What is RAG?"),
-        Message(
-            role="assistant", 
-            content="RAG (Retrieval-Augmented Generation) is a technique that enhances LLM responses by retrieving relevant information from a knowledge base before generating an answer."
-        ),
-        Message(role="user", content="How can I implement it?"),
-        Message(
-            role="assistant", 
-            content="To implement RAG, you need: 1) A document store, 2) A retrieval system, 3) An LLM, and 4) A way to combine retrieved information with the LLM prompt."
-        )
-    ]
-
-
-def clear_chat_history() -> bool:
-    """
-    Clear the chat history.
-
-    Returns:
-        bool: True if the operation was successful.
-    """
-    # Placeholder implementation
-    print("Clearing chat history")
-    return True
-
-
-def get_model_info() -> Dict[str, Any]:
-    """
-    Get information about the currently used LLM model.
-
-    Returns:
-        Dict[str, Any]: Information about the model.
-    """
-    # Placeholder implementation
-    return {
-        "name": "GPT-4",
-        "version": "2025-05",
-        "context_window": 8192,
-        "capabilities": ["text generation", "code generation", "reasoning"]
-    }
+    return _rag_system.chat_history.copy()
