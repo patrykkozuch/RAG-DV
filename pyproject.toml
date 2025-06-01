@@ -5,6 +5,6 @@ description = "RAG project for Data Visualization Course at AGH"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "haystack>=0.42",
+    "haystack-ai>=2.0",
     "streamlit>=1.45.1",
 ]

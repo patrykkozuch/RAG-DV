@@ -15,7 +15,7 @@ def display_chat_message(message: Message) -> None:
     if message.sources:
         with st.expander("Sources"):
             for source in message.sources:
-                st.markdown(f"**Document:** {source['id']} (Relevance: {source['relevance']:.2f})")
+                st.markdown(f"**Document:** {source['file_name']} (Relevance: {source['relevance']:.2f})")
 
     if metadata := message.metadata_string():
         st.caption(metadata)
