@@ -1,5 +1,5 @@
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from .message import Message
 from .llm_node import LLMNode
@@ -9,14 +9,19 @@ from .document_operations import DocumentManager
 class RAGSystem:
 
     def __init__(
-        self,
-        llm_base_url: str = "http://localhost:8080",
-        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+            self,
+            llm_base_url: str = "http://localhost:8080",
+            qdrant_url: str = "http://localhost:6333",
+            embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ):
         self.llm_node = LLMNode(llm_base_url)
-        self.document_manager = DocumentManager(embedding_model=embedding_model)
+        self.document_manager = DocumentManager(
+            qdrant_url=qdrant_url,
+            qdrant_collection="documents",
+            embedding_model=embedding_model,
+            embedding_dim=384  # Default dimension for MiniLM
+        )
         self.chat_history: List[Message] = []
-
 
         self.chat_history.append(
             Message(
@@ -48,13 +53,15 @@ def query_llm(query: str, use_rag: bool = True) -> Message:
         if relevant_docs:
             context_parts = []
             for i, doc in enumerate(relevant_docs):
-                context_parts.append(f"Document {i+1}: {doc.content}")
-                sources.append({
-                    "id": doc.id,
-                    "file_name": doc.meta["file_name"],
-                    "metadata": doc.meta,
-                    "relevance": 1.0 - (i * 0.1)
-                })
+                context_parts.append(f"Document {i + 1}: {doc.content}")
+                sources.append(
+                    {
+                        "id": doc.id,
+                        "file_name": doc.meta["file_name"],
+                        "metadata": doc.meta,
+                        "relevance": 1.0 - (i * 0.1)
+                    }
+                )
 
             context = "\n\n".join(context_parts)
             enhanced_query = f"""Context from relevant documents:
@@ -71,7 +78,6 @@ def query_llm(query: str, use_rag: bool = True) -> Message:
     messages.append({"role": "user", "content": enhanced_query})
 
     response = _rag_system.llm_node.chat_completion(messages)
-
 
     response.sources = sources
     if not response.processing_time:
