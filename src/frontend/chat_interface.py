@@ -16,6 +16,7 @@ def display_chat_message(message: Message) -> None:
         with st.expander("Sources"):
             for source in message.sources:
                 st.markdown(f"**Document:** {source['file_name']} (Relevance: {source['relevance']:.2f})")
+                st.markdown(f"```text\n{source['content']}\n```")
 
     if metadata := message.metadata_string():
         st.caption(metadata)
@@ -42,7 +43,6 @@ def render_chat_interface():
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                time.sleep(3)  # should be removed at some point :)
                 response = query_llm(prompt)
                 display_chat_message(response)
 

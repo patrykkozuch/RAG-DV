@@ -8,16 +8,14 @@ from src.backend.document_operations import DocumentManager
 
 
 def render_document_management():
+    """Render the document management component."""
     global _document_manager
     if '_document_manager' not in globals():
         _document_manager = DocumentManager(
             qdrant_url="http://localhost:6333",
-            qdrant_collection="documents",
-            embedding_model="sentence-transformers/all-MiniLM-L6-v2",
-            embedding_dim=384  # Default dimension for MiniLM
+            qdrant_collection="documents"
         )
         _document_manager.initialize_from_directory()
-    """Render the document management component."""
 
     col1, _ = st.columns([2, 1])
 
@@ -46,49 +44,54 @@ def render_document_management():
                     }
 
                     result = _document_manager.upload_document(file_content, metadata)
-                    print(result)
-
                     if result:
-                        st.success(f"Document uploaded successfully! ID: {result['id']}")
-                        st.session_state.documents.append(result)
-
+                        st.success(f"File uploaded successfully! file_id: {result['file_id']}")
+                        # Refresh the list of documents to get the updated doc_count
+                        st.session_state.documents = _document_manager.list_documents()
+                        st.rerun() # Ensure UI updates immediately
                     else:
                         st.error("Failed to upload document.")
 
-    st.markdown("### Your Documents")
+    st.markdown("### Your Files")
 
-    list_cols = st.columns([1, 4, 1, 1, 2])
-    list_cols[0].markdown("**ID**")
-    list_cols[1].markdown("**Title**")
-    list_cols[2].markdown("**Type**")
-    list_cols[3].markdown("**Size (KB)**")
+    if "delete_message" in st.session_state:
+        st.success(st.session_state.delete_message)
+        del st.session_state.delete_message
+
+    # Display files grouping chunks
+    list_cols = st.columns([5, 1, 1, 1, 2])
+    list_cols[0].markdown("**Title**")
+    list_cols[1].markdown("**Type**")
+    list_cols[2].markdown("**Size (KB)**")
+    list_cols[3].markdown("**Chunks**")
     list_cols[4].markdown("**Actions**")
 
-    for doc in st.session_state.documents:
-        col1_row, col2_row, col3_row, col4_row, col5_row = st.columns([1, 4, 1, 1, 2])
-
-        view_key = f"view_{doc['id']}"
-        delete_key = f"delete_{doc['id']}"
+    for file in st.session_state.documents:
+        # rows for name, type, size, chunks, actions
+        cols = st.columns([5, 1, 1, 1, 2])
+        col1_row, col2_row, col3_row, col4_row, col5_row = cols
+        view_key = f"view_{file['file_id']}"
+        delete_key = f"delete_{file['file_id']}"
 
         if col5_row.button("View", key=view_key):
-            content = _document_manager.get_document_content(doc["id"])
+            content = _document_manager.get_document_content(file["file_id"])
             if content:
-                st.text_area("Document content", value=content, height=300, disabled=True)
+                st.text_area("File content", value=content, height=300, disabled=True)
             else:
-                st.error("Could not retrieve document content.")
+                st.error("Could not retrieve file content.")
 
         if col5_row.button("Delete", key=delete_key):
-            _document_manager.delete_document(doc["id"])
-            st.session_state.documents.remove(doc)
-            st.success(f"Document {doc['id']} deleted successfully!")
+            _document_manager.delete_document(file["file_id"])
+            st.session_state.delete_message = f"File {file['file_id']} deleted successfully!"
+            st.session_state.documents = _document_manager.list_documents()
             st.rerun()
 
         with col1_row:
-            st.write(doc.get("id", "N/A"))
+            st.write(file.get("file_name", "N/A"))
         with col2_row:
-            st.write(doc.get("file_name", "N/A"))
+            st.write(file.get("file_type", "N/A"))
         with col3_row:
-            st.write(doc.get("file_type", "N/A"))
-        with col4_row:
-            size_kb = doc.get("file_size", 0)
+            size_kb = file.get("file_size", 0)
             st.write(f"{size_kb:.2f}")
+        with col4_row:
+            st.write(file.get("doc_count", 0))

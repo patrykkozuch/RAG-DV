@@ -1,11 +1,10 @@
-import os
-from datetime import time
 from typing import List, Optional, Dict, Any
 from pathlib import Path
+import uuid
 
 from haystack import Document, Pipeline
 from haystack.components.converters import TextFileToDocument
-from haystack.components.preprocessors import DocumentSplitter, DocumentCleaner, RecursiveDocumentSplitter
+from haystack.components.preprocessors import DocumentCleaner, RecursiveDocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.dataclasses import ByteStream
@@ -18,16 +17,12 @@ class DocumentManager:
         self,
         qdrant_url: str,
         qdrant_collection: str = "documents",
-        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
-        embedding_dim: Optional[int] = None
     ):
         self.document_store = QdrantDocumentStore(
             url=qdrant_url,
-            index=qdrant_collection,
-            embedding_dim=embedding_dim,
+            index=qdrant_collection
 
         )
-        self.embedding_model = embedding_model
 
         self.text_converter = TextFileToDocument()
         self.pdf_converter = PyPDFToDocument()
@@ -39,15 +34,12 @@ class DocumentManager:
         )
 
         self.splitter =  RecursiveDocumentSplitter(
-            split_length=1000,
+            split_length=500,
             split_overlap=100,
             separators=["\n\n", "\n", ".", " "]
         )
 
-        self.embedder = SentenceTransformersDocumentEmbedder(
-            model=embedding_model,
-            progress_bar=True
-        )
+        self.embedder = SentenceTransformersDocumentEmbedder()
 
         self.writer = DocumentWriter(document_store=self.document_store)
 
@@ -61,7 +53,7 @@ class DocumentManager:
         self.processing_pipeline.connect("embedder", "writer")
 
 
-        self.text_embedder = SentenceTransformersTextEmbedder(model=embedding_model)
+        self.text_embedder = SentenceTransformersTextEmbedder()
         self.retriever = QdrantEmbeddingRetriever(document_store=self.document_store)
 
         self.search_pipeline = Pipeline()
@@ -73,25 +65,31 @@ class DocumentManager:
         return self.document_store.filter_documents()
 
     def list_documents(self) -> List[Dict[str, Any]]:
+        # Group haystack documents by file_id to represent files
         documents = self.get_documents()
-        doc_list = []
+        files: Dict[str, Dict[str, Any]] = {}
         for doc in documents:
-            metadata = doc.meta
-            doc_info = {
-                "id": doc.id,
-                "file_name": metadata["file_name"],
-                "file_size": metadata["file_size"],
-                "file_type": metadata["file_type"],
-            }
-            doc_list.append(doc_info)
-
-        return doc_list
+            meta = doc.meta
+            fid = meta.get("file_id")
+            if not fid:
+                continue
+            if fid not in files:
+                files[fid] = {
+                    "file_id": fid,
+                    "file_name": meta.get("file_name"),
+                    "file_type": meta.get("file_type"),
+                    "file_size": meta.get("file_size"),
+                    "doc_count": 0
+                }
+            files[fid]["doc_count"] += 1
+        return list(files.values())
 
     def upload_document(
         self,
         content: bytes,
         metadata: Optional[Dict[str, Any]] = None
     ) -> dict[str, Any]:
+        metadata["file_id"] = uuid.uuid4().hex
         if metadata["file_type"] in ["pdf", "application/pdf"]:
             return self.upload_pdf_document(content, metadata)
         elif metadata["file_type"] in ["txt", "text/plain"]:
@@ -103,8 +101,7 @@ class DocumentManager:
         content: bytes,
         metadata: Optional[Dict[str, Any]] = None
     ) -> dict[str, Any]:
-        document = Document(content=content.decode(), meta=metadata or {})
-        metadata["id"] = document.id
+        document = Document(content=content.decode(), meta=metadata)
         document_ret = self.processing_pipeline.run({"documents": [document]})
 
         if document_ret:
@@ -119,20 +116,22 @@ class DocumentManager:
     ) -> dict[str, Any]:
         stream = ByteStream(data=content, mime_type=metadata["file_type"])
         documents = self.pdf_converter.run([stream])["documents"]
-        metadata["id"] = documents[0].id
-        document_ret = None
         for document in documents:
-            document.meta.update(metadata or {})
-            document_ret = self.processing_pipeline.run({"documents": documents})
+            document.meta.update(metadata)
+        document_ret = self.processing_pipeline.run({"documents": documents})
 
         if document_ret:
             return metadata
 
         raise ValueError("Failed to process PDF document.")
 
-    def delete_document(self, document_id: str):
-        self.document_store.filter_documents()
-        self.document_store.delete_documents([document_id])
+    def delete_document(self, file_id: str):
+        # delete all haystack documents associated with a file_id
+        docs = self.document_store.filter_documents(filters={"field": "meta.file_id", "operator": "==", "value": file_id})
+        ids = [doc.id for doc in docs]
+        if not ids:
+            return
+        self.document_store.delete_documents(ids)
 
     def get_document_count(self) -> int:
         return self.document_store.count_documents()
@@ -144,13 +143,13 @@ class DocumentManager:
         })
         return result["retriever"]["documents"]
 
-    def get_document_content(self, doc_id: str) -> Optional[Document]:
-        docs = self.document_store.filter_documents(filters={"field": "id", "operator": "==", "value": doc_id})
-        return docs[0].content
-
-    def get_document(self, doc_id: str) -> Optional[Document]:
-        docs = self.document_store.filter_documents(filters={"field": "id", "operator": "==", "value": doc_id})
-        return docs[0] if docs else None
+    def get_document_content(self, file_id: str) -> str | None:
+        # retrieve and concatenate all content chunks for a file_id
+        docs = self.document_store.filter_documents(filters={"field": "meta.file_id", "operator": "==", "value": file_id})
+        if not docs:
+            return None
+        # combine contents in arbitrary order
+        return "\n".join([doc.content for doc in docs])
 
     def initialize_from_directory(self, directory_path: str = "documents"):
         directory = Path(directory_path)
