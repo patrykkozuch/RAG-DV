@@ -11,15 +11,12 @@ class RAGSystem:
     def __init__(
             self,
             llm_base_url: str = "http://localhost:8080",
-            qdrant_url: str = "http://localhost:6333",
-            embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+            qdrant_url: str = "http://localhost:6333"
     ):
         self.llm_node = LLMNode(llm_base_url)
         self.document_manager = DocumentManager(
             qdrant_url=qdrant_url,
-            qdrant_collection="documents",
-            embedding_model=embedding_model,
-            embedding_dim=384  # Default dimension for MiniLM
+            qdrant_collection="documents"
         )
         self.chat_history: List[Message] = []
 
@@ -59,7 +56,8 @@ def query_llm(query: str, use_rag: bool = True) -> Message:
                         "id": doc.id,
                         "file_name": doc.meta["file_name"],
                         "metadata": doc.meta,
-                        "relevance": 1.0 - (i * 0.1)
+                        "relevance": doc.score,
+                        "content": doc.content  # Dodanie treści dokumentu do źródeł
                     }
                 )
 
